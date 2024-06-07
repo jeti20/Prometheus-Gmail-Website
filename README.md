@@ -486,6 +486,7 @@ kill PID
 
 restart alert prometheus
 
+```
 cd /home/ubuntu/prometheus
 pgrep prometheus
 kill PID
