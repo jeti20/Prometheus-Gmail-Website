@@ -496,7 +496,21 @@ Now yo ucan check Alerts in Prometheus, no laert is trigged  everything is worki
 
 ![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/d8fd066e-1143-421b-9aad-4934067bf949)
 
-Lets stop the Service for app
+Lets stop the Service for app, go to the correct isntance, this app is working on port 8080, checkid the PID and killing it
+
+```
+sudo lsof -i :8080
+kill PID
+```
+
+Checking the Prometheus alerts, we can see that alert responsible for checking if website is down is now status "PENDING" after 1min it will be "FIRING"
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/0af5cc38-0e6c-44c0-844e-0537583f8adf)
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/65aca3dd-2e66-422f-9450-975bb00d9e6d)
+
+also you should receive email about this alert
+
+
 
 =======PROBLEMS I FACED====
 After taking a brake fro mthis project and then returned to it I had to start the node_exporter as well as the application. Aplication works fine, but I cannot display the nodexporter through IP:9100. Node exporteer was runnig fine. Checked if it is running: 
