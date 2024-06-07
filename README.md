@@ -252,6 +252,251 @@ vim prometheus.yml
 
 ![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/0b1eacaa-b212-4c0d-bec9-20cf436e322d)
 
+copy that 
+```
+  - job_name: "node_exporter"         # Job name for node exporter
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["3.110.195.114:9100"]  # Target node exporter endpoint
+```
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/3ccd2aa5-f3a7-409b-9ac4-3a641031acf9)
+
+Go to https://www.yamllint.com/ and paste it and click "Go". this should pops out, copy it and past in at the end of prometheus.yml
+
+```
+- job_name: node_exporter
+  static_configs:
+    - targets:
+        - YourIpForNodeExporter:9100
+```
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/db5a50e8-0922-4eee-9eb2-712e1e1c72e8)
+
+restart Prometheus 
+
+```
+cd /home/ubuntu/prometheus
+pgrep prometheus
+kill PID
+./prometheus &
+```
+
+Go to Prometheus Status->Targets, now you should see 
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/f659eefe-0852-4791-a70a-8d3d509d0ff2)
+
+Adding BlackBox_Exporter to targets. Go to https://prometheus.io/download/#blackbox_exporter click in the link which is pointed on screen https://github.com/prometheus/blackbox_exporter find section "Prometheus Configuration" and copy example config
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/da9f2c01-acb7-43d6-b55b-78292a0cf587)
+
+Example config
+
+```
+scrape_configs:
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]  # Look for a HTTP 200 response.
+    static_configs:
+      - targets:
+        - http://prometheus.io    # Target to probe with http.
+        - https://prometheus.io   # Target to probe with https.
+        - http://example.com:8080 # Target to probe with http on port 8080.
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115  # The blackbox exporter's real hostname:port.
+  - job_name: 'blackbox_exporter'  # collect blackbox exporter's operational metrics.
+    static_configs:
+      - targets: ['127.0.0.1:9115']
+```
+
+Go to https://www.yamllint.com/ use it as previously
+the output
+
+```
+scrape_configs:
+  - job_name: blackbox
+    metrics_path: /probe
+    params:
+      module:
+        - http_2xx
+    static_configs:
+      - targets:
+          - http://prometheus.io
+          - https://prometheus.io
+          - http://example.com:8080
+    relabel_configs:
+      - source_labels:
+          - __address__
+        target_label: __param_target
+      - source_labels:
+          - __param_target
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+  - job_name: blackbox_exporter
+    static_configs:
+      - targets:
+          - 127.0.0.1:9115
+
+```
+
+You need to modify this part (remove scrap config and the --- on the beggining)
+
+```
+  - job_name: blackbox
+    metrics_path: /probe
+    params:
+      module:
+        - http_2xx
+    static_configs:
+      - targets:
+          - http://prometheus.io
+          - https://prometheus.io
+          - http://IpInstanceWithService:8080
+    relabel_configs:
+      - source_labels:
+          - __address__
+        target_label: __param_target
+      - source_labels:
+          - __param_target
+        target_label: instance
+      - target_label: __address__
+        replacement: IpWithBlackBoxExporter:9115
+```
+
+Paste it into prometheus.yml
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/4d981d83-9295-4388-8288-4f55355a69ea)
+
+restart Prometheus 
+
+```
+cd /home/ubuntu/prometheus
+pgrep prometheus
+kill PID
+./prometheus &
+```
+Now if you check Prometheus status->targets blackbox exporter is present 
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/6ef9ead7-527e-4595-bc4b-f2ef36846285)
+
+Why they are "DOWN"? because BlackBox Exporter is not started yet. Starting BlackBoxExporter
+
+```
+cd /home/ubuntu/blackbox_exporter
+./blackbox_exporter &
+```
+
+run in your browser on port :9100
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/3d99fefb-52c1-4ebe-af39-c803388ed938)
+
+Now it is running and getting information from the Instance on which is the Application. If you check prometheus targets, now they are UP
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/24473ded-a96c-43ca-818b-fb5d8d907d88)
+
+=====Setting up the mail notification=============
+
+```
+cd /home/ubuntu/alertmanager
+rm alertmanager.yml
+```
+
+Copy this routning configuration 
+
+```
+route:
+  group_by: ['alertname']             # Group by alert name
+  group_wait: 30s                     # Wait time before sending the first notification
+  group_interval: 5m                  # Interval between notifications
+  repeat_interval: 1h                 # Interval to resend notifications
+  receiver: 'email-notifications'     # Default receiver
+
+receivers:
+- name: 'email-notifications'         # Receiver name
+  email_configs:
+  - to: jaiswaladi246@gmail.com       # Email recipient
+    from: test@gmail.com              # Email sender
+    smarthost: smtp.gmail.com:587     # SMTP server
+    auth_username: your_email         # SMTP auth username
+    auth_identity: your_email         # SMTP auth identity
+    auth_password: "bdmq omqh vvkk zoqx"  # SMTP auth password
+    send_resolved: true               # Send notifications for resolved alerts
+inhibit_rules:
+  - source_match:
+      severity: 'critical'            # Source alert severity
+    target_match:
+      severity: 'warning'             # Target alert severity
+    equal: ['alertname', 'dev', 'instance']  # Fields to match
+```
+
+Paste it into https://www.yamllint.com/ the output
+
+```
+route:
+  group_by:
+    - alertname
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 1h
+  receiver: email-notifications
+receivers:
+  - name: email-notifications
+    email_configs:
+      - to: your_email
+        from: test@gmail.com
+        smarthost: smtp.gmail.com:587
+        auth_username: your_email
+        auth_identity: your_email
+        auth_password: app password
+        send_resolved: true
+inhibit_rules:
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal:
+      - alertname
+      - dev
+      - instance
+
+```
+
+You have to generate "auth_password". You have to have 2 step verification on your gmail account. create new file with the content 
+
+```
+nano alertmanager.yml
+```
+
+restart alert manager
+
+```
+pgrep alertmanager
+kill PID
+./alertmanager &
+```
+
+restart alert prometheus
+
+cd /home/ubuntu/prometheus
+pgrep prometheus
+kill PID
+./prometheus &
+```
+
+Now yo ucan check Alerts in Prometheus, no laert is trigged  everything is working fine. 
+
+![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/d8fd066e-1143-421b-9aad-4934067bf949)
+
+Lets stop the Service for app
 
 =======PROBLEMS I FACED====
 After taking a brake fro mthis project and then returned to it I had to start the node_exporter as well as the application. Aplication works fine, but I cannot display the nodexporter through IP:9100. Node exporteer was runnig fine. Checked if it is running: 
@@ -268,3 +513,4 @@ AlertManager 9093
 Prometheus 9090
 Aplication 8080
 NodeExporter 9100
+BlackBoxExporter 9115
