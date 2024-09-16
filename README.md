@@ -89,7 +89,8 @@ cd /home/ubuntu/Boardgame
 java
 ```
 
-![image](https://github.com/jeti20/Prometheus-Gmail-Website/assets/61649661/1b26297f-a815-43bd-b2c3-c29f096a1914)
+![image](https://github.com/user-attachments/assets/b7224675-2b36-48ed-9f55-35a11529092e)
+
 
 ```
 sudo apt install openjdk-17-jre-headless
